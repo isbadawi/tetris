@@ -1,18 +1,23 @@
 #include <cstdint>
 #include <iostream>
 #include <sstream>
+#include <vector>
 
 #include <SFML/System.hpp>
 #include <SFML/Graphics.hpp>
 
 class TetrisGame {
 private:
+  std::vector<std::vector<sf::Color> > Grid;
   uint64_t Score;
   uint64_t Level;
   uint64_t Lines;
 
 public:
-  TetrisGame() : Score(0), Level(1), Lines(0) {}
+  static const int Rows = 20;
+  static const int Cols = 10;
+  TetrisGame() : Score(0), Level(1), Lines(0),
+                 Grid(Rows, std::vector<sf::Color>(Cols, sf::Color::Black)) {}
   bool handleEvent(const sf::Event &Event);
   void update(sf::Time Delta);
   void display(sf::RenderWindow &Window, sf::Font &Font);
@@ -40,12 +45,27 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
   unsigned int Height = Window.getSize().y;
   unsigned int Margin = 10;
 
-  sf::RectangleShape Grid(sf::Vector2f(Width / 2, Height - 2 * Margin));
-  Grid.setOutlineColor(sf::Color::White);
-  Grid.setOutlineThickness(3);
-  Grid.setFillColor(sf::Color::Black);
-  Grid.setPosition(Margin, Margin);
-  Window.draw(Grid);
+  unsigned int BlockSize = (Height - 2 * Margin) / Rows;
+
+  sf::RectangleShape GridBox(sf::Vector2f(BlockSize * Cols, Height - 2 * Margin));
+  GridBox.setOutlineColor(sf::Color::White);
+  GridBox.setOutlineThickness(3);
+  GridBox.setFillColor(sf::Color::Black);
+  GridBox.setPosition(Margin, Margin);
+  Window.draw(GridBox);
+
+  for (int i = 0; i < Rows; ++i) {
+    for (int j = 0; j < Cols; ++j) {
+      sf::RectangleShape Block(sf::Vector2f(BlockSize, BlockSize));
+      Block.setOutlineColor(sf::Color::Black);
+      Block.setOutlineThickness(2);
+      Block.setFillColor(Grid[i][j]);
+      Block.setPosition(
+          Margin + j * BlockSize,
+          Margin + (20 - i - 1) * BlockSize);
+      Window.draw(Block);
+    }
+  }
 
   unsigned int FontSize = 50;
   sf::Text ScoreLabel("Score", Font, FontSize);
