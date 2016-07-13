@@ -6,8 +6,9 @@
 #include <sstream>
 #include <vector>
 
-#include <SFML/System.hpp>
+#include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
+#include <SFML/System.hpp>
 
 typedef std::vector<std::vector<int> > Tetromino;
 std::vector<Tetromino> TETROMINOES = {
@@ -200,9 +201,15 @@ int main() {
   sf::RenderWindow Window(sf::VideoMode(1024, 768), "Tetris");
   sf::Font Font;
   if (!Font.loadFromFile("Arial.ttf")) {
-    std::cerr << "error loading font Arial.ttf\n";
     return 1;
   }
+  sf::Music Music;
+  if (!Music.openFromFile("TetrisTheme.ogg")) {
+    return 1;
+  }
+  Music.setLoop(true);
+  Music.play();
+
   TetrisGame Game;
 
   bool Quit = false;
@@ -210,6 +217,15 @@ int main() {
   while (!Quit && Window.isOpen()) {
     sf::Event Event;
     while (Window.pollEvent(Event)) {
+      if (Event.type == sf::Event::KeyPressed) {
+        if (Event.key.code == sf::Keyboard::M) {
+          if (Music.getStatus() != sf::SoundSource::Playing) {
+            Music.play();
+          } else {
+            Music.pause();
+          }
+        }
+      }
       Quit = !Game.handleEvent(Event);
     }
 
