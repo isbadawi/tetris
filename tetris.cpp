@@ -1,7 +1,9 @@
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
+#include <map>
 #include <random>
 #include <sstream>
 #include <vector>
@@ -10,94 +12,217 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/System.hpp>
 
-typedef std::vector<std::vector<int> > Tetromino;
-std::vector<Tetromino> TETROMINOES = {
-{
-  // L
-  {0, 0, 0, 0, 0},
-  {0, 0, 0, 1, 0},
-  {0, 1, 1, 1, 0},
-  {0, 0, 0, 0, 0},
-  {0, 0, 0, 0, 0},
-},
+class Tetromino {
+public:
+  enum Kind {
+    I, O, T, J, L, S, Z,
+    NumKinds
+  };
+  typedef std::vector<std::vector<int> > Shape;
 
-{
-  // T
-  {0, 0, 0, 0, 0},
-  {0, 0, 1, 0, 0},
-  {0, 1, 1, 1, 0},
-  {0, 0, 0, 0, 0},
-  {0, 0, 0, 0, 0},
-},
+  Tetromino(Kind Type) : Type(Type), ShapeIndex(0) {}
 
-{
-  // Reverse L
-  {0, 0, 0, 0, 0},
-  {0, 1, 0, 0, 0},
-  {0, 1, 1, 1, 0},
-  {0, 0, 0, 0, 0},
-  {0, 0, 0, 0, 0},
-},
+  static Tetromino CreateRandom() {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, Tetromino::NumKinds - 1);
+    return Tetromino(static_cast<Tetromino::Kind>(dis(gen)));
+  }
 
-{
-  // Square
-  {0, 0, 0, 0, 0},
-  {0, 0, 1, 1, 0},
-  {0, 0, 1, 1, 0},
-  {0, 0, 0, 0, 0},
-  {0, 0, 0, 0, 0},
-},
+  Shape& getShape();
+  sf::Color getColor();
+  void rotateLeft();
+  void rotateRight();
 
-{
-  // Line
-  {0, 0, 0, 0, 0},
-  {0, 0, 0, 1, 0},
-  {0, 0, 0, 1, 0},
-  {0, 0, 0, 1, 0},
-  {0, 0, 0, 1, 0},
-},
-
-{
-  // S
-  {0, 0, 0, 0, 0},
-  {0, 0, 1, 1, 0},
-  {0, 1, 1, 0, 0},
-  {0, 0, 0, 0, 0},
-  {0, 0, 0, 0, 0},
-},
-
-{
-  // Reverse S
-  {0, 0, 0, 0, 0},
-  {0, 1, 1, 0, 0},
-  {0, 0, 1, 1, 0},
-  {0, 0, 0, 0, 0},
-  {0, 0, 0, 0, 0},
-},
-
+private:
+  Kind Type;
+  int ShapeIndex;
 };
 
-static Tetromino& randomTetromino() {
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<> dis(0, TETROMINOES.size() - 1);
-  return TETROMINOES[dis(gen)];
+std::map<Tetromino::Kind, sf::Color> COLORS = {
+  { Tetromino::I, sf::Color::White },
+  { Tetromino::O, sf::Color::Red },
+  { Tetromino::T, sf::Color::Yellow },
+  { Tetromino::J, sf::Color::Blue },
+  { Tetromino::L, sf::Color::Magenta },
+  { Tetromino::S, sf::Color::Cyan },
+  { Tetromino::Z, sf::Color::Green },
+};
+
+std::map<Tetromino::Kind, std::vector<Tetromino::Shape>> SHAPES = {
+  {
+    Tetromino::I,
+    {
+      {
+        {0, 0, 0, 0},
+        {1, 1, 1, 1},
+        {0, 0, 0, 0},
+        {0, 0, 0, 0},
+      }, {
+        {0, 1, 0, 0},
+        {0, 1, 0, 0},
+        {0, 1, 0, 0},
+        {0, 1, 0, 0},
+      }
+    }
+  },
+  {
+    Tetromino::O,
+    {
+      {
+        {0, 0, 0, 0},
+        {0, 1, 1, 0},
+        {0, 1, 1, 0},
+        {0, 0, 0, 0}
+      }
+    }
+  },
+  {
+    Tetromino::T,
+    {
+      {
+        {0, 0, 0, 0},
+        {0, 1, 0, 0},
+        {1, 1, 1, 0},
+        {0, 0, 0, 0}
+      }, {
+        {0, 0, 0, 0},
+        {0, 1, 0, 0},
+        {0, 1, 1, 0},
+        {0, 1, 0, 0}
+      }, {
+        {0, 0, 0, 0},
+        {0, 0, 0, 0},
+        {1, 1, 1, 0},
+        {0, 1, 0, 0}
+      }, {
+        {0, 0, 0, 0},
+        {0, 1, 0, 0},
+        {1, 1, 0, 0},
+        {0, 1, 0, 0}
+      }
+    }
+  },
+  {
+    Tetromino::J,
+    {
+      {
+        {0, 0, 0, 0},
+        {1, 1, 1, 0},
+        {0, 0, 1, 0},
+        {0, 0, 0, 0}
+      }, {
+        {0, 1, 0, 0},
+        {0, 1, 0, 0},
+        {1, 1, 0, 0},
+        {0, 0, 0, 0}
+      }, {
+        {1, 0, 0, 0},
+        {1, 1, 1, 0},
+        {0, 0, 0, 0},
+        {0, 0, 0, 0}
+      }, {
+        {1, 1, 0, 0},
+        {1, 0, 0, 0},
+        {1, 0, 0, 0},
+        {0, 0, 0, 0}
+      }
+    }
+  },
+  {
+    Tetromino::L,
+    {
+      {
+        {0, 0, 0, 0},
+        {1, 1, 1, 0},
+        {1, 0, 0, 0},
+        {0, 0, 0, 0}
+      }, {
+        {0, 0, 0, 0},
+        {1, 1, 0, 0},
+        {0, 1, 0, 0},
+        {0, 1, 0, 0}
+      }, {
+        {0, 0, 0, 0},
+        {0, 0, 1, 0},
+        {1, 1, 1, 0},
+        {0, 0, 0, 0}
+      }, {
+        {1, 0, 0, 0},
+        {1, 0, 0, 0},
+        {1, 1, 0, 0},
+        {0, 0, 0, 0}
+      }
+    }
+  },
+  {
+    Tetromino::S,
+    {
+      {
+        {0, 0, 0, 0},
+        {0, 1, 1, 0},
+        {1, 1, 0, 0},
+        {0, 0, 0, 0},
+      }, {
+        {1, 0, 0, 0},
+        {1, 1, 0, 0},
+        {0, 1, 0, 0},
+        {0, 0, 0, 0},
+      }
+    }
+  },
+  {
+    Tetromino::Z,
+    {
+      {
+        {0, 0, 0, 0},
+        {1, 1, 0, 0},
+        {0, 1, 1, 0},
+        {0, 0, 0, 0},
+      }, {
+        {0, 0, 1, 0},
+        {0, 1, 1, 0},
+        {0, 1, 0, 0},
+        {0, 0, 0, 0},
+      }
+    }
+  }
+};
+
+Tetromino::Shape& Tetromino::getShape() {
+  return SHAPES[Type][ShapeIndex];
+}
+
+sf::Color Tetromino::getColor() {
+  return COLORS[Type];
+}
+
+void Tetromino::rotateLeft() {
+  ShapeIndex = (ShapeIndex - 1) % SHAPES[Type].size();
+}
+
+void Tetromino::rotateRight() {
+  ShapeIndex = (ShapeIndex + 1) % SHAPES[Type].size();
 }
 
 class TetrisGame {
 private:
   std::vector<std::vector<sf::Color> > Grid;
-  Tetromino *Current;
-  Tetromino *Next;
+  Tetromino Current;
+  Tetromino Next;
+  int32_t CurrentX;
+  int32_t CurrentY;
   uint64_t Score;
   uint64_t Level;
   uint64_t Lines;
 
 public:
-  static const int Rows = 20;
-  static const int Cols = 10;
+  static const uint32_t Rows = 20;
+  static const uint32_t Cols = 10;
   TetrisGame() : Score(0), Level(1), Lines(0),
-                 Current(nullptr), Next(&randomTetromino()),
+                 Current(Tetromino::CreateRandom()),
+                 Next(Tetromino::CreateRandom()),
+                 CurrentX(3), CurrentY(0),
                  Grid(Rows, std::vector<sf::Color>(Cols, sf::Color::Black)) {}
   bool handleEvent(const sf::Event &Event);
   void update(sf::Time Delta);
@@ -107,6 +232,20 @@ public:
 bool TetrisGame::handleEvent(const sf::Event &Event) {
   if (Event.type == sf::Event::Closed) {
     return false;
+  }
+
+  if (Event.type == sf::Event::KeyPressed) {
+    switch (Event.key.code) {
+    case sf::Keyboard::Up:
+    case sf::Keyboard::X:
+      Current.rotateRight();
+      break;
+    case sf::Keyboard::Z:
+      Current.rotateLeft();
+      break;
+    default:
+      break;
+    }
   }
 
   return true;
@@ -148,7 +287,23 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
     }
   }
 
-  sf::RectangleShape NextBox(sf::Vector2f(BlockSize * 5, BlockSize * 5));
+  Tetromino::Shape &Shape = Current.getShape();
+  for (int i = 0; i < Shape.size(); ++i) {
+    for (int j = 0; j < Shape[i].size(); ++j) {
+      if (Shape[i][j]) {
+        sf::RectangleShape Block(sf::Vector2f(BlockSize, BlockSize));
+        Block.setOutlineColor(sf::Color::Black);
+        Block.setOutlineThickness(2);
+        Block.setFillColor(Current.getColor());
+        Block.setPosition(
+            Margin + (CurrentX + j) * BlockSize,
+            Margin + (CurrentY + i) * BlockSize);
+        Window.draw(Block);
+      }
+    }
+  }
+
+  sf::RectangleShape NextBox(sf::Vector2f(BlockSize * 6, BlockSize * 4));
   NextBox.setOutlineColor(sf::Color::White);
   NextBox.setOutlineThickness(3);
   NextBox.setFillColor(sf::Color::Black);
@@ -157,16 +312,17 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
   NextBox.setPosition(NextBoxX, NextBoxY);
   Window.draw(NextBox);
 
-  for (int i = 0; i < Next->size(); ++i) {
-    for (int j = 0; j < (*Next)[0].size(); ++j) {
-      if ((*Next)[i][j]) {
+  Tetromino::Shape &NextShape = Next.getShape();
+  for (int i = 0; i < NextShape.size(); ++i) {
+    for (int j = 0; j < NextShape[i].size(); ++j) {
+      if (NextShape[i][j]) {
         sf::RectangleShape Block(sf::Vector2f(BlockSize, BlockSize));
         Block.setOutlineColor(sf::Color::Black);
         Block.setOutlineThickness(2);
-        Block.setFillColor(sf::Color::White);
+        Block.setFillColor(Next.getColor());
         Block.setPosition(
-            NextBoxX + j * BlockSize,
-            NextBoxY + i * BlockSize);
+            NextBoxX + (j + 1) * BlockSize,
+            NextBoxY + (i * 1) * BlockSize);
         Window.draw(Block);
       }
     }
