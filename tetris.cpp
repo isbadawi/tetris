@@ -215,6 +215,11 @@ private:
   uint64_t Score;
   uint64_t Level;
   uint64_t Lines;
+  sf::Clock Tick;
+
+  void moveLeft();
+  void moveRight();
+  void moveDown();
 
 public:
   static const uint32_t Rows = 20;
@@ -225,9 +230,21 @@ public:
                  CurrentX(3), CurrentY(0),
                  Grid(Rows, std::vector<sf::Color>(Cols, sf::Color::Black)) {}
   bool handleEvent(const sf::Event &Event);
-  void update(sf::Time Delta);
+  void update();
   void display(sf::RenderWindow &Window, sf::Font &Font);
 };
+
+void TetrisGame::moveLeft() {
+  CurrentX--;
+}
+
+void TetrisGame::moveRight() {
+  CurrentX++;
+}
+
+void TetrisGame::moveDown() {
+  CurrentY++;
+}
 
 bool TetrisGame::handleEvent(const sf::Event &Event) {
   if (Event.type == sf::Event::Closed) {
@@ -243,6 +260,15 @@ bool TetrisGame::handleEvent(const sf::Event &Event) {
     case sf::Keyboard::Z:
       Current.rotateLeft();
       break;
+    case sf::Keyboard::Left:
+      moveLeft();
+      break;
+    case sf::Keyboard::Right:
+      moveRight();
+      break;
+    case sf::Keyboard::Down:
+      moveDown();
+      break;
     default:
       break;
     }
@@ -251,7 +277,11 @@ bool TetrisGame::handleEvent(const sf::Event &Event) {
   return true;
 }
 
-void TetrisGame::update(sf::Time Delta) {
+void TetrisGame::update() {
+  if (Tick.getElapsedTime().asSeconds() >= 1) {
+    moveDown();
+    Tick.restart();
+  }
 }
 
 static std::string formatInt(uint64_t Val) {
@@ -369,7 +399,6 @@ int main() {
   TetrisGame Game;
 
   bool Quit = false;
-  sf::Clock Clock;
   while (!Quit && Window.isOpen()) {
     sf::Event Event;
     while (Window.pollEvent(Event)) {
@@ -385,7 +414,7 @@ int main() {
       Quit = !Game.handleEvent(Event);
     }
 
-    Game.update(Clock.restart());
+    Game.update();
     Window.clear();
     Game.display(Window, Font);
     Window.display();
