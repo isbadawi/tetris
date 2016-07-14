@@ -374,6 +374,13 @@ bool TetrisGame::handleEvent(const sf::Event &Event) {
     case sf::Keyboard::Down:
       moveDown();
       break;
+    case sf::Keyboard::Space: {
+      uint64_t CurrentScore = Score;
+      do {
+        moveDown();
+      } while (Score == CurrentScore);
+      break;
+    }
     default:
       break;
     }
