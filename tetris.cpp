@@ -12,6 +12,13 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/System.hpp>
 
+static int RandomIntBetween(int Low, int High) {
+  std::random_device Device;
+  std::mt19937 Generator(Device());
+  std::uniform_int_distribution<> Distribution(Low, High);
+  return Distribution(Generator);
+}
+
 class Tetromino {
 public:
   enum Kind {
@@ -23,10 +30,8 @@ public:
   Tetromino(Kind Type) : Type(Type), ShapeIndex(0) {}
 
   static Tetromino CreateRandom() {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(0, Tetromino::NumKinds - 1);
-    return Tetromino(static_cast<Tetromino::Kind>(dis(gen)));
+    int Kind = RandomIntBetween(0, Tetromino::NumKinds - 1);
+    return Tetromino(static_cast<Tetromino::Kind>(Kind));
   }
 
   Shape& getShape();
@@ -313,6 +318,7 @@ void TetrisGame::moveDown() {
   CurrentPos.y++;
   if (!currentPosIsValid()) {
     CurrentPos.y--;
+
     Tetromino::Shape &Shape = Current.getShape();
     for (int i = 0; i < Shape.size(); ++i) {
       for (int j = 0; j < Shape[i].size(); ++j) {
@@ -326,6 +332,22 @@ void TetrisGame::moveDown() {
     Current = Next;
     Next = Tetromino::CreateRandom();
     Tick.restart();
+
+    int LinesCompleted = 0;
+
+    for (int i = 0; i < Grid.size(); ++i) {
+      if (std::count(Grid[i].begin(), Grid[i].end(), sf::Color::Black) == 0) {
+        ++LinesCompleted;
+        for (int k = i, j = k - 1; j >= 0; --j, --k) {
+          std::copy(Grid[j].begin(), Grid[j].end(), Grid[k].begin());
+        }
+      }
+    }
+
+    Score += RandomIntBetween(14, 19);
+    Lines += LinesCompleted;
+    Score += LinesCompleted * 100 * (LinesCompleted == 4 ? 2 : 1);
+    Level = 1 + Lines / 10;
   }
 }
 
@@ -361,7 +383,7 @@ bool TetrisGame::handleEvent(const sf::Event &Event) {
 }
 
 void TetrisGame::update() {
-  if (Tick.getElapsedTime().asSeconds() >= 1) {
+  if (Tick.getElapsedTime().asSeconds() >= 1.0 / Level) {
     moveDown();
     Tick.restart();
   }
