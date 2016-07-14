@@ -12,7 +12,7 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/System.hpp>
 
-static int RandomIntBetween(int Low, int High) {
+static int randomIntBetween(int Low, int High) {
   std::random_device Device;
   std::mt19937 Generator(Device());
   std::uniform_int_distribution<> Distribution(Low, High);
@@ -25,16 +25,16 @@ public:
     I, O, T, J, L, S, Z,
     NumKinds
   };
-  typedef std::vector<std::vector<int> > Shape;
+  typedef std::vector<std::vector<int>> Shape;
 
   Tetromino(Kind Type) : Type(Type), ShapeIndex(0) {}
 
   static Tetromino CreateRandom() {
-    int Kind = RandomIntBetween(0, Tetromino::NumKinds - 1);
+    int Kind = randomIntBetween(0, Tetromino::NumKinds - 1);
     return Tetromino(static_cast<Tetromino::Kind>(Kind));
   }
 
-  Shape& getShape();
+  Shape &getShape();
   sf::Color getColor();
   void rotateLeft();
   void rotateRight();
@@ -218,7 +218,7 @@ private:
   Tetromino Current;
   Tetromino Next;
   sf::Vector2i CurrentPos;
-  std::vector<std::vector<sf::Color> > Grid;
+  std::vector<std::vector<sf::Color>> Grid;
   sf::Clock Tick;
 
   bool currentPosIsValid();
@@ -344,7 +344,7 @@ void TetrisGame::moveDown() {
       }
     }
 
-    Score += RandomIntBetween(14, 19);
+    Score += randomIntBetween(14, 19);
     Lines += LinesCompleted;
     Score += LinesCompleted * 100 * (LinesCompleted == 4 ? 2 : 1);
     Level = 1 + Lines / 10;
