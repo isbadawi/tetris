@@ -44,7 +44,7 @@ private:
   int ShapeIndex;
 };
 
-std::map<Tetromino::Kind, sf::Color> COLORS = {
+static std::map<Tetromino::Kind, sf::Color> COLORS = {
   { Tetromino::I, sf::Color::White },
   { Tetromino::O, sf::Color::Red },
   { Tetromino::T, sf::Color::Yellow },
@@ -54,7 +54,7 @@ std::map<Tetromino::Kind, sf::Color> COLORS = {
   { Tetromino::Z, sf::Color::Green },
 };
 
-std::map<Tetromino::Kind, std::vector<Tetromino::Shape>> SHAPES = {
+static std::map<Tetromino::Kind, std::vector<Tetromino::Shape>> SHAPES = {
   {
     Tetromino::I,
     {
@@ -212,13 +212,13 @@ void Tetromino::rotateRight() {
 
 class TetrisGame {
 private:
-  std::vector<std::vector<sf::Color> > Grid;
-  Tetromino Current;
-  Tetromino Next;
-  sf::Vector2i CurrentPos;
   uint64_t Score;
   uint64_t Level;
   uint64_t Lines;
+  Tetromino Current;
+  Tetromino Next;
+  sf::Vector2i CurrentPos;
+  std::vector<std::vector<sf::Color> > Grid;
   sf::Clock Tick;
 
   bool currentPosIsValid();
@@ -247,8 +247,8 @@ bool TetrisGame::currentPosIsValid() {
 
   // Left wall
   if (CurrentPos.x < 0) {
-    for (int i = 0; i < Shape.size(); ++i) {
-      if (Shape[i][-CurrentPos.x - 1]) {
+    for (auto &Row : Shape) {
+      if (Row[-CurrentPos.x - 1]) {
         return false;
       }
     }
@@ -256,8 +256,8 @@ bool TetrisGame::currentPosIsValid() {
 
   // Right wall
   if (CurrentPos.x + Shape[0].size() - 1 > Cols - 1) {
-    for (int i = 0; i < Shape.size(); ++i) {
-      if (Shape[i][Cols - CurrentPos.x]) {
+    for (auto &Row : Shape) {
+      if (Row[Cols - CurrentPos.x]) {
         return false;
       }
     }
@@ -265,7 +265,7 @@ bool TetrisGame::currentPosIsValid() {
 
   // Ground
   if (CurrentPos.y + Shape.size() - 1 > Rows - 1) {
-    for (int i = 0; i < Shape[0].size(); ++i) {
+    for (unsigned i = 0; i < Shape[0].size(); ++i) {
       if (Shape[Rows - CurrentPos.y][i]) {
         return false;
       }
@@ -273,8 +273,8 @@ bool TetrisGame::currentPosIsValid() {
   }
 
   // Other pieces
-  for (int i = 0; i < Shape.size(); ++i) {
-    for (int j = 0; j < Shape[i].size(); ++j) {
+  for (unsigned i = 0; i < Shape.size(); ++i) {
+    for (unsigned j = 0; j < Shape[i].size(); ++j) {
       if (Shape[i][j] &&
           Grid[CurrentPos.y + i][CurrentPos.x + j] != sf::Color::Black) {
         return false;
@@ -320,8 +320,8 @@ void TetrisGame::moveDown() {
     CurrentPos.y--;
 
     Tetromino::Shape &Shape = Current.getShape();
-    for (int i = 0; i < Shape.size(); ++i) {
-      for (int j = 0; j < Shape[i].size(); ++j) {
+    for (unsigned i = 0; i < Shape.size(); ++i) {
+      for (unsigned j = 0; j < Shape[i].size(); ++j) {
         if (Shape[i][j]) {
           Grid[CurrentPos.y + i][CurrentPos.x + j] = Current.getColor();
         }
@@ -335,7 +335,7 @@ void TetrisGame::moveDown() {
 
     int LinesCompleted = 0;
 
-    for (int i = 0; i < Grid.size(); ++i) {
+    for (unsigned i = 0; i < Grid.size(); ++i) {
       if (std::count(Grid[i].begin(), Grid[i].end(), sf::Color::Black) == 0) {
         ++LinesCompleted;
         for (int k = i, j = k - 1; j >= 0; --j, --k) {
@@ -416,8 +416,8 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
   GridBox.setPosition(Margin, Margin);
   Window.draw(GridBox);
 
-  for (int i = 0; i < Rows; ++i) {
-    for (int j = 0; j < Cols; ++j) {
+  for (unsigned i = 0; i < Rows; ++i) {
+    for (unsigned j = 0; j < Cols; ++j) {
       sf::RectangleShape Block(sf::Vector2f(BlockSize, BlockSize));
       Block.setOutlineColor(sf::Color::Black);
       Block.setOutlineThickness(2);
@@ -430,8 +430,8 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
   }
 
   Tetromino::Shape &Shape = Current.getShape();
-  for (int i = 0; i < Shape.size(); ++i) {
-    for (int j = 0; j < Shape[i].size(); ++j) {
+  for (unsigned i = 0; i < Shape.size(); ++i) {
+    for (unsigned j = 0; j < Shape[i].size(); ++j) {
       if (Shape[i][j]) {
         sf::RectangleShape Block(sf::Vector2f(BlockSize, BlockSize));
         Block.setOutlineColor(sf::Color::Black);
@@ -455,8 +455,8 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
   Window.draw(NextBox);
 
   Tetromino::Shape &NextShape = Next.getShape();
-  for (int i = 0; i < NextShape.size(); ++i) {
-    for (int j = 0; j < NextShape[i].size(); ++j) {
+  for (unsigned i = 0; i < NextShape.size(); ++i) {
+    for (unsigned j = 0; j < NextShape[i].size(); ++j) {
       if (NextShape[i][j]) {
         sf::RectangleShape Block(sf::Vector2f(BlockSize, BlockSize));
         Block.setOutlineColor(sf::Color::Black);
