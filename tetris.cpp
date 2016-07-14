@@ -210,13 +210,15 @@ private:
   std::vector<std::vector<sf::Color> > Grid;
   Tetromino Current;
   Tetromino Next;
-  int32_t CurrentX;
-  int32_t CurrentY;
+  sf::Vector2i CurrentPos;
   uint64_t Score;
   uint64_t Level;
   uint64_t Lines;
   sf::Clock Tick;
 
+  bool currentPosIsValid();
+  void rotateLeft();
+  void rotateRight();
   void moveLeft();
   void moveRight();
   void moveDown();
@@ -227,23 +229,104 @@ public:
   TetrisGame() : Score(0), Level(1), Lines(0),
                  Current(Tetromino::CreateRandom()),
                  Next(Tetromino::CreateRandom()),
-                 CurrentX(3), CurrentY(0),
+                 CurrentPos(3, 0),
                  Grid(Rows, std::vector<sf::Color>(Cols, sf::Color::Black)) {}
   bool handleEvent(const sf::Event &Event);
   void update();
   void display(sf::RenderWindow &Window, sf::Font &Font);
 };
 
+
+bool TetrisGame::currentPosIsValid() {
+  Tetromino::Shape &Shape = Current.getShape();
+
+  // Left wall
+  if (CurrentPos.x < 0) {
+    for (int i = 0; i < Shape.size(); ++i) {
+      if (Shape[i][-CurrentPos.x - 1]) {
+        return false;
+      }
+    }
+  }
+
+  // Right wall
+  if (CurrentPos.x + Shape[0].size() - 1 > Cols - 1) {
+    for (int i = 0; i < Shape.size(); ++i) {
+      if (Shape[i][Cols - CurrentPos.x]) {
+        return false;
+      }
+    }
+  }
+
+  // Ground
+  if (CurrentPos.y + Shape.size() - 1 > Rows - 1) {
+    for (int i = 0; i < Shape[0].size(); ++i) {
+      if (Shape[Rows - CurrentPos.y][i]) {
+        return false;
+      }
+    }
+  }
+
+  // Other pieces
+  for (int i = 0; i < Shape.size(); ++i) {
+    for (int j = 0; j < Shape[i].size(); ++j) {
+      if (Shape[i][j] &&
+          Grid[CurrentPos.y + i][CurrentPos.x + j] != sf::Color::Black) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+void TetrisGame::rotateLeft() {
+  Current.rotateLeft();
+  if (!currentPosIsValid()) {
+    Current.rotateRight();
+  }
+}
+
+void TetrisGame::rotateRight() {
+  Current.rotateRight();
+  if (!currentPosIsValid()) {
+    Current.rotateLeft();
+  }
+}
+
+
 void TetrisGame::moveLeft() {
-  CurrentX--;
+  CurrentPos.x--;
+  if (!currentPosIsValid()) {
+    CurrentPos.x++;
+  }
 }
 
 void TetrisGame::moveRight() {
-  CurrentX++;
+  CurrentPos.x++;
+  if (!currentPosIsValid()) {
+    CurrentPos.x--;
+  }
 }
 
 void TetrisGame::moveDown() {
-  CurrentY++;
+  CurrentPos.y++;
+  if (!currentPosIsValid()) {
+    CurrentPos.y--;
+    Tetromino::Shape &Shape = Current.getShape();
+    for (int i = 0; i < Shape.size(); ++i) {
+      for (int j = 0; j < Shape[i].size(); ++j) {
+        if (Shape[i][j]) {
+          Grid[CurrentPos.y + i][CurrentPos.x + j] = Current.getColor();
+        }
+      }
+    }
+    CurrentPos.x = 3;
+    CurrentPos.y = 0;
+    Current = Next;
+    Next = Tetromino::CreateRandom();
+    Tick.restart();
+  }
 }
 
 bool TetrisGame::handleEvent(const sf::Event &Event) {
@@ -255,10 +338,10 @@ bool TetrisGame::handleEvent(const sf::Event &Event) {
     switch (Event.key.code) {
     case sf::Keyboard::Up:
     case sf::Keyboard::X:
-      Current.rotateRight();
+      rotateRight();
       break;
     case sf::Keyboard::Z:
-      Current.rotateLeft();
+      rotateLeft();
       break;
     case sf::Keyboard::Left:
       moveLeft();
@@ -312,7 +395,7 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
       Block.setFillColor(Grid[i][j]);
       Block.setPosition(
           Margin + j * BlockSize,
-          Margin + (20 - i - 1) * BlockSize);
+          Margin + i * BlockSize);
       Window.draw(Block);
     }
   }
@@ -326,8 +409,8 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
         Block.setOutlineThickness(2);
         Block.setFillColor(Current.getColor());
         Block.setPosition(
-            Margin + (CurrentX + j) * BlockSize,
-            Margin + (CurrentY + i) * BlockSize);
+            Margin + (CurrentPos.x + j) * BlockSize,
+            Margin + (CurrentPos.y + i) * BlockSize);
         Window.draw(Block);
       }
     }
