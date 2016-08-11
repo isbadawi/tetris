@@ -8,3 +8,6 @@ $ (cd build && cmake ..)
 $ make -C build
 $ build/tetris
 ```
+
+### License
+MIT
