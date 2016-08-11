@@ -12,6 +12,8 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/System.hpp>
 
+#include "config.h"
+
 static int randomIntBetween(int Low, int High) {
   std::random_device Device;
   std::mt19937 Generator(Device());
@@ -498,11 +500,11 @@ int main() {
   std::srand(std::time(0));
   sf::RenderWindow Window(sf::VideoMode(1024, 768), "Tetris");
   sf::Font Font;
-  if (!Font.loadFromFile("Arial.ttf")) {
+  if (!Font.loadFromFile(ASSETS_DIR "/Arial.ttf")) {
     return 1;
   }
   sf::Music Music;
-  if (!Music.openFromFile("TetrisTheme.ogg")) {
+  if (!Music.openFromFile(ASSETS_DIR "/TetrisTheme.ogg")) {
     return 1;
   }
   Music.setLoop(true);
