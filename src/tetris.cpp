@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cassert>
 #include <cstdint>
 #include <cstdlib>
 #include <ctime>
@@ -13,6 +14,51 @@
 #include <SFML/System.hpp>
 
 #include "config.h"
+
+class PausableClock {
+  sf::Clock Clock;
+
+  bool Paused;
+  sf::Clock Pause;
+  sf::Time TimeSpentPaused;
+
+public:
+  PausableClock() {}
+
+  sf::Time getElapsedTime() {
+    return Clock.getElapsedTime() - TimeSpentPaused -
+      (Paused ? Pause.getElapsedTime() : sf::Time::Zero);
+  }
+
+  sf::Time restart() {
+    sf::Time ElapsedTime = getElapsedTime();
+    Paused = false;
+    Clock.restart();
+    TimeSpentPaused = sf::Time::Zero;
+    return ElapsedTime;
+  }
+
+  void pause() {
+    assert(!Paused);
+    Paused = true;
+    Pause.restart();
+  }
+
+  void unpause() {
+    assert(Paused);
+    TimeSpentPaused += Pause.restart();
+    Paused = false;
+  }
+
+  void togglePause() {
+    if (Paused) {
+      unpause();
+    } else {
+      pause();
+    }
+  }
+
+};
 
 static int randomIntBetween(int Low, int High) {
   std::random_device Device;
@@ -221,7 +267,8 @@ private:
   Tetromino Next;
   sf::Vector2i CurrentPos;
   std::vector<std::vector<sf::Color>> Grid;
-  sf::Clock Tick;
+  PausableClock Tick;
+  bool Paused;
 
   bool currentPosIsValid();
   void rotateLeft();
@@ -359,6 +406,15 @@ bool TetrisGame::handleEvent(const sf::Event &Event) {
   }
 
   if (Event.type == sf::Event::KeyPressed) {
+    if (Event.key.code == sf::Keyboard::P) {
+      Tick.togglePause();
+      Paused = !Paused;
+    }
+
+    if (Paused) {
+      return true;
+    }
+
     switch (Event.key.code) {
     case sf::Keyboard::Up:
     case sf::Keyboard::X:
@@ -494,6 +550,15 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
   Window.draw(LevelLabel);
   Window.draw(LevelValue);
 
+  if (Paused) {
+    sf::Text PausedText("PAUSED", Font, 200);
+    PausedText.setPosition(100, Height - 200);
+    PausedText.setFillColor(sf::Color::White);
+    PausedText.setOutlineColor(sf::Color::Black);
+    PausedText.setOutlineThickness(5);
+    PausedText.rotate(-45);
+    Window.draw(PausedText);
+  }
 }
 
 int main() {
