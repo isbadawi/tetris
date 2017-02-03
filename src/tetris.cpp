@@ -15,6 +15,75 @@
 
 #include "config.h"
 
+class Mode {
+public:
+  virtual void handleEvent(const sf::Event &Event __unused) {}
+  virtual void update() {}
+  virtual void display(sf::RenderWindow &Window __unused, sf::Font &Font __unused) {}
+};
+
+class Menu : public Mode {
+private:
+  std::vector<std::pair<std::string, std::function<void()>>> MenuItems;
+  unsigned Index;
+
+public:
+  Menu() {}
+  void addMenuItem(std::string Label, std::function<void()> Action);
+  void handleEvent(const sf::Event &Event);
+  void display(sf::RenderWindow &Window, sf::Font &Font);
+};
+
+void Menu::addMenuItem(std::string Label, std::function<void()> Action) {
+  MenuItems.push_back(std::make_pair(Label, Action));
+}
+
+void Menu::handleEvent(const sf::Event &Event) {
+  if (Event.type == sf::Event::KeyPressed) {
+    switch (Event.key.code) {
+    case sf::Keyboard::Up:
+      Index = std::min(Index - 1, (unsigned) MenuItems.size() - 1);
+      break;
+    case sf::Keyboard::Down:
+      Index = (Index + 1) % MenuItems.size();
+      break;
+    case sf::Keyboard::Return:
+      assert(0 <= Index && Index < MenuItems.size());
+      MenuItems[Index].second();
+      break;
+    default:
+      break;
+    }
+  }
+}
+
+static void centerTextHorizontally(sf::Text &Text, sf::RenderWindow &Window) {
+  sf::FloatRect Rect = Text.getLocalBounds();
+  float X = (Window.getSize().x - (Rect.left + Rect.width)) / 2.0f;
+  Text.setPosition(X, Text.getPosition().y);
+}
+
+void Menu::display(sf::RenderWindow &Window, sf::Font &Font) {
+  sf::Text Logo("TETRIS", Font, 200);
+  Logo.setPosition(0, 0);
+  centerTextHorizontally(Logo, Window);
+  Window.draw(Logo);
+
+  for (unsigned I = 0, E = MenuItems.size(); I != E; ++I) {
+    unsigned int FontSize = 50;
+    sf::Text Label(MenuItems[I].first, Font, FontSize);
+    if (I == Index) {
+      Label.setFillColor(sf::Color::Yellow);
+    }
+
+    float ItemHeight = Window.getSize().y / (MenuItems.size() * 2.0f);
+    float Y = ItemHeight * (I + MenuItems.size());
+    Label.setPosition(0, Y);
+    centerTextHorizontally(Label, Window);
+    Window.draw(Label);
+  }
+}
+
 class PausableClock {
   sf::Clock Clock;
 
@@ -258,7 +327,7 @@ void Tetromino::rotateRight() {
   ShapeIndex = (ShapeIndex + 1) % SHAPES[Type].size();
 }
 
-class TetrisGame {
+class TetrisGame : public Mode {
 private:
   uint64_t Score;
   uint64_t Level;
@@ -285,7 +354,7 @@ public:
                  Next(Tetromino::CreateRandom()),
                  CurrentPos(3, 0),
                  Grid(Rows, std::vector<sf::Color>(Cols, sf::Color::Black)) {}
-  bool handleEvent(const sf::Event &Event);
+  void handleEvent(const sf::Event &Event);
   void update();
   void display(sf::RenderWindow &Window, sf::Font &Font);
 };
@@ -400,11 +469,7 @@ void TetrisGame::moveDown() {
   }
 }
 
-bool TetrisGame::handleEvent(const sf::Event &Event) {
-  if (Event.type == sf::Event::Closed) {
-    return false;
-  }
-
+void TetrisGame::handleEvent(const sf::Event &Event) {
   if (Event.type == sf::Event::KeyPressed) {
     if (Event.key.code == sf::Keyboard::P) {
       Tick.togglePause();
@@ -412,7 +477,7 @@ bool TetrisGame::handleEvent(const sf::Event &Event) {
     }
 
     if (Paused) {
-      return true;
+      return;
     }
 
     switch (Event.key.code) {
@@ -443,8 +508,6 @@ bool TetrisGame::handleEvent(const sf::Event &Event) {
       break;
     }
   }
-
-  return true;
 }
 
 void TetrisGame::update() {
@@ -575,12 +638,23 @@ int main() {
   Music.setLoop(true);
   Music.play();
 
+  Menu MainMenu;
   TetrisGame Game;
 
+  Mode *Mode = &MainMenu;
+
   bool Quit = false;
+
+  MainMenu.addMenuItem("Play", [&] { Mode = &Game; });
+  MainMenu.addMenuItem("High Scores", [&] { /* TODO */ });
+  MainMenu.addMenuItem("Quit Game", [&] { Quit = true; });
+
   while (!Quit && Window.isOpen()) {
     sf::Event Event;
     while (Window.pollEvent(Event)) {
+      if (Event.type == sf::Event::Closed) {
+        Quit = true;
+      }
       if (Event.type == sf::Event::KeyPressed) {
         if (Event.key.code == sf::Keyboard::M) {
           if (Music.getStatus() != sf::SoundSource::Playing) {
@@ -590,12 +664,12 @@ int main() {
           }
         }
       }
-      Quit = !Game.handleEvent(Event);
+      Mode->handleEvent(Event);
     }
 
-    Game.update();
+    Mode->update();
     Window.clear();
-    Game.display(Window, Font);
+    Mode->display(Window, Font);
     Window.display();
   }
 
