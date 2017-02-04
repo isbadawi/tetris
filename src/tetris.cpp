@@ -50,6 +50,7 @@ void Menu::handleEvent(const sf::Event &Event) {
     case sf::Keyboard::Return:
       assert(0 <= Index && Index < MenuItems.size());
       MenuItems[Index].second();
+      Index = 0;
       break;
     default:
       break;
@@ -338,6 +339,8 @@ private:
   std::vector<std::vector<sf::Color>> Grid;
   PausableClock Tick;
   bool Paused;
+  bool GameOver;
+  std::function<void()> EndCallback;
 
   bool currentPosIsValid();
   void rotateLeft();
@@ -345,6 +348,7 @@ private:
   void moveLeft();
   void moveRight();
   void moveDown();
+  void reset();
 
 public:
   static const uint32_t Rows = 20;
@@ -357,8 +361,25 @@ public:
   void handleEvent(const sf::Event &Event);
   void update();
   void display(sf::RenderWindow &Window, sf::Font &Font);
+  void setEndCallback(std::function<void()> Callback);
 };
 
+void TetrisGame::reset() {
+  Score = 0;
+  Level = 1;
+  Lines = 0;
+  Current = Tetromino::CreateRandom();
+  Next = Tetromino::CreateRandom();
+  CurrentPos.x = 3;
+  CurrentPos.y = 0;
+  Grid = std::vector<std::vector<sf::Color>>(
+      Rows, std::vector<sf::Color>(Cols, sf::Color::Black));
+  GameOver = false;
+}
+
+void TetrisGame::setEndCallback(std::function<void()> Callback) {
+  EndCallback = Callback;
+}
 
 bool TetrisGame::currentPosIsValid() {
   Tetromino::Shape &Shape = Current.getShape();
@@ -466,10 +487,19 @@ void TetrisGame::moveDown() {
     Lines += LinesCompleted;
     Score += LinesCompleted * 100 * (LinesCompleted == 4 ? 2 : 1);
     Level = 1 + Lines / 10;
+
+    if (!currentPosIsValid()) {
+      GameOver = true;
+      return;
+    }
   }
 }
 
 void TetrisGame::handleEvent(const sf::Event &Event) {
+  if (GameOver) {
+    return;
+  }
+
   if (Event.type == sf::Event::KeyPressed) {
     if (Event.key.code == sf::Keyboard::P) {
       Tick.togglePause();
@@ -501,7 +531,7 @@ void TetrisGame::handleEvent(const sf::Event &Event) {
       uint64_t CurrentScore = Score;
       do {
         moveDown();
-      } while (Score == CurrentScore);
+      } while (Score == CurrentScore && !GameOver);
       break;
     }
     default:
@@ -511,7 +541,13 @@ void TetrisGame::handleEvent(const sf::Event &Event) {
 }
 
 void TetrisGame::update() {
-  if (Tick.getElapsedTime().asSeconds() >= 1.0 / Level) {
+  if (GameOver) {
+    if (Tick.getElapsedTime().asSeconds() >= 2) {
+      assert(EndCallback);
+      EndCallback();
+      reset();
+    }
+  } else if (Tick.getElapsedTime().asSeconds() >= 1.0 / Level) {
     moveDown();
     Tick.restart();
   }
@@ -648,6 +684,8 @@ int main() {
   MainMenu.addMenuItem("Play", [&] { Mode = &Game; });
   MainMenu.addMenuItem("High Scores", [&] { /* TODO */ });
   MainMenu.addMenuItem("Quit Game", [&] { Quit = true; });
+
+  Game.setEndCallback([&] { Mode = &MainMenu; /* TODO: Save score */ });
 
   while (!Quit && Window.isOpen()) {
     sf::Event Event;
