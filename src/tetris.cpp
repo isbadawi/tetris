@@ -1,12 +1,15 @@
 #include <algorithm>
 #include <cassert>
+#include <cctype>
 #include <cstdint>
 #include <cstdlib>
 #include <ctime>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <random>
 #include <sstream>
+#include <string>
 #include <vector>
 
 #include <SFML/Audio.hpp>
@@ -21,6 +24,143 @@ public:
   virtual void update() {}
   virtual void display(sf::RenderWindow &Window __unused, sf::Font &Font __unused) {}
 };
+
+static void centerTextHorizontally(sf::Text &Text, sf::RenderWindow &Window) {
+  sf::FloatRect Rect = Text.getLocalBounds();
+  float X = (Window.getSize().x - (Rect.left + Rect.width)) / 2.0f;
+  Text.setPosition(X, Text.getPosition().y);
+}
+
+const unsigned int MAX_HIGH_SCORES = 10;
+class HighScores : public Mode {
+private:
+  std::vector<std::pair<std::string, uint64_t>> Scores;
+  bool PlayerIsTyping;
+  std::string *PlayerNameInput;
+  std::function<void()> EndCallback;
+
+  std::string *addScore(std::string Name, uint64_t Score);
+public:
+  void loadFromFile(const char *Path);
+  void saveToFile(const char *Path);
+  bool isHighScore(uint64_t Score);
+  void recordNewHighScore(uint64_t Score);
+  void handleEvent(const sf::Event &Event);
+  void display(sf::RenderWindow &Window, sf::Font &Font);
+  void setEndCallback(std::function<void()> Callback);
+};
+
+void HighScores::loadFromFile(const char *Path) {
+  std::ifstream Stream;
+  Stream.open(Path);
+  assert(!Stream.fail());
+
+  std::string Line;
+  while (std::getline(Stream, Line)) {
+    size_t Comma = Line.find(',');
+    assert(Comma != std::string::npos);
+    std::string Name = Line.substr(0, Comma);
+    int Score = std::stoi(Line.substr(Comma + 1));
+    assert(Score >= 0);
+    addScore(Name, (uint64_t) Score);
+  }
+  assert(Scores.size() <= MAX_HIGH_SCORES);
+
+  std::sort(Scores.begin(), Scores.end(), [](auto &a, auto &b) {
+    return b.second < a.second;
+  });
+}
+
+void HighScores::saveToFile(const char *Path) {
+  std::ofstream Stream;
+  Stream.open(Path);
+  assert(!Stream.fail());
+
+  for (auto &Entry : Scores) {
+    Stream << Entry.first << ',' << Entry.second << '\n';
+  }
+}
+
+bool HighScores::isHighScore(uint64_t Score) {
+  return Scores.size() < MAX_HIGH_SCORES ||
+    Score > Scores.back().second;
+}
+
+std::string *HighScores::addScore(std::string Name, uint64_t Score) {
+  assert(isHighScore(Score));
+  if (Scores.size() == MAX_HIGH_SCORES) {
+    Scores.pop_back();
+  }
+  auto Pos = std::find_if(Scores.begin(), Scores.end(), [Score](auto &e) {
+    return e.second < Score;
+  });
+  return &(*Scores.insert(Pos, std::make_pair(Name, Score))).first;
+}
+
+void HighScores::setEndCallback(std::function<void()> Callback) {
+  EndCallback = Callback;
+}
+
+void HighScores::recordNewHighScore(uint64_t Score) {
+  PlayerIsTyping = true;
+  PlayerNameInput = addScore("", Score);
+}
+
+void HighScores::handleEvent(const sf::Event &Event) {
+  if (Event.type == sf::Event::KeyPressed &&
+      Event.key.code == sf::Keyboard::Return) {
+    if (PlayerIsTyping) {
+      assert(PlayerNameInput);
+      if (!PlayerNameInput->empty()) {
+        PlayerIsTyping = false;
+        PlayerNameInput = nullptr;
+        return;
+      }
+    } else {
+      assert(EndCallback);
+      EndCallback();
+      return;
+    }
+  }
+
+  if (!PlayerIsTyping) {
+    return;
+  }
+
+  if (Event.type == sf::Event::TextEntered) {
+    if (Event.text.unicode == '\b') {
+      if (!PlayerNameInput->empty()) {
+        PlayerNameInput->erase(PlayerNameInput->size() - 1, 1);
+      }
+    } else if (isalpha(Event.text.unicode)) {
+      *PlayerNameInput += Event.text.unicode;
+    }
+  }
+}
+
+void HighScores::display(sf::RenderWindow &Window, sf::Font &Font) {
+  sf::Text HighScoreLabel("HIGH SCORES", Font, 100);
+  HighScoreLabel.setPosition(0, 0);
+  centerTextHorizontally(HighScoreLabel, Window);
+  Window.draw(HighScoreLabel);
+
+  unsigned Index = 1;
+  for (auto &Entry : Scores) {
+    std::stringstream Line;
+    Line << Index++ << ". " << Entry.first << " " << Entry.second;
+    sf::Text Label(Line.str(), Font, 50);
+
+    if (&Entry.first == PlayerNameInput) {
+      Label.setFillColor(sf::Color::Yellow);
+    }
+
+    float ItemHeight = Window.getSize().y / (MAX_HIGH_SCORES + 3);
+    float Y = ItemHeight * Index;
+    Label.setPosition(0, Y);
+    centerTextHorizontally(Label, Window);
+    Window.draw(Label);
+  }
+}
 
 class Menu : public Mode {
 private:
@@ -56,12 +196,6 @@ void Menu::handleEvent(const sf::Event &Event) {
       break;
     }
   }
-}
-
-static void centerTextHorizontally(sf::Text &Text, sf::RenderWindow &Window) {
-  sf::FloatRect Rect = Text.getLocalBounds();
-  float X = (Window.getSize().x - (Rect.left + Rect.width)) / 2.0f;
-  Text.setPosition(X, Text.getPosition().y);
 }
 
 void Menu::display(sf::RenderWindow &Window, sf::Font &Font) {
@@ -340,7 +474,7 @@ private:
   PausableClock Tick;
   bool Paused;
   bool GameOver;
-  std::function<void()> EndCallback;
+  std::function<void(uint64_t)> EndCallback;
 
   bool currentPosIsValid();
   void rotateLeft();
@@ -361,7 +495,7 @@ public:
   void handleEvent(const sf::Event &Event);
   void update();
   void display(sf::RenderWindow &Window, sf::Font &Font);
-  void setEndCallback(std::function<void()> Callback);
+  void setEndCallback(std::function<void(uint64_t)> Callback);
 };
 
 void TetrisGame::reset() {
@@ -377,7 +511,7 @@ void TetrisGame::reset() {
   GameOver = false;
 }
 
-void TetrisGame::setEndCallback(std::function<void()> Callback) {
+void TetrisGame::setEndCallback(std::function<void(uint64_t)> Callback) {
   EndCallback = Callback;
 }
 
@@ -544,7 +678,7 @@ void TetrisGame::update() {
   if (GameOver) {
     if (Tick.getElapsedTime().asSeconds() >= 2) {
       assert(EndCallback);
-      EndCallback();
+      EndCallback(Score);
       reset();
     }
   } else if (Tick.getElapsedTime().asSeconds() >= 1.0 / Level) {
@@ -674,6 +808,10 @@ int main() {
   Music.setLoop(true);
   Music.play();
 
+  HighScores HighScores;
+  // FIXME(ibadawi): Where should the file be?
+  HighScores.loadFromFile("high_scores.txt");
+
   Menu MainMenu;
   TetrisGame Game;
 
@@ -682,10 +820,20 @@ int main() {
   bool Quit = false;
 
   MainMenu.addMenuItem("Play", [&] { Mode = &Game; });
-  MainMenu.addMenuItem("High Scores", [&] { /* TODO */ });
+  MainMenu.addMenuItem("High Scores", [&] { Mode = &HighScores; });
   MainMenu.addMenuItem("Quit Game", [&] { Quit = true; });
 
-  Game.setEndCallback([&] { Mode = &MainMenu; /* TODO: Save score */ });
+  HighScores.setEndCallback([&] { Mode = &MainMenu; });
+
+  Game.setEndCallback([&](uint64_t Score) {
+    if (HighScores.isHighScore(Score)) {
+      Mode = &HighScores;
+      HighScores.recordNewHighScore(Score);
+    } else {
+      Mode = &MainMenu;
+    }
+  });
+
 
   while (!Quit && Window.isOpen()) {
     sf::Event Event;
@@ -711,6 +859,7 @@ int main() {
     Window.display();
   }
 
+  HighScores.saveToFile("high_scores.txt");
   Window.close();
 
   return 0;
