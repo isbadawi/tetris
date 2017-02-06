@@ -614,6 +614,7 @@ void TetrisGame::moveDown() {
         for (int k = i, j = k - 1; j >= 0; --j, --k) {
           std::copy(Grid[j].begin(), Grid[j].end(), Grid[k].begin());
         }
+        std::fill(Grid[0].begin(), Grid[0].end(), sf::Color::Black);
       }
     }
 
