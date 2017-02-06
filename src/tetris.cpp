@@ -491,7 +491,8 @@ public:
                  Current(Tetromino::CreateRandom()),
                  Next(Tetromino::CreateRandom()),
                  CurrentPos(3, 0),
-                 Grid(Rows, std::vector<sf::Color>(Cols, sf::Color::Black)) {}
+                 Grid(Rows, std::vector<sf::Color>(Cols, sf::Color::Black)),
+                 Paused(false), GameOver(false) {}
   void handleEvent(const sf::Event &Event);
   void update();
   void display(sf::RenderWindow &Window, sf::Font &Font);
@@ -508,6 +509,7 @@ void TetrisGame::reset() {
   CurrentPos.y = 0;
   Grid = std::vector<std::vector<sf::Color>>(
       Rows, std::vector<sf::Color>(Cols, sf::Color::Black));
+  Paused = false;
   GameOver = false;
 }
 
