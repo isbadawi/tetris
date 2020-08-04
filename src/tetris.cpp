@@ -722,58 +722,43 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
 
   unsigned int BlockSize = (Height - 2 * Margin) / Rows;
 
+  sf::Transform T;
+  T.translate(Margin, Margin);
+
   sf::RectangleShape GridBox(sf::Vector2f(BlockSize * Cols, Height - 2 * Margin));
   GridBox.setOutlineColor(sf::Color::White);
   GridBox.setOutlineThickness(3);
   GridBox.setFillColor(sf::Color::Black);
-  GridBox.setPosition(Margin, Margin);
-  Window.draw(GridBox);
+  Window.draw(GridBox, T);
+
+  auto drawBlock = [&](auto X, auto Y, auto Outline, auto Fill) {
+    sf::RectangleShape Block(sf::Vector2f(BlockSize, BlockSize));
+    Block.setOutlineColor(Outline);
+    Block.setOutlineThickness(2);
+    Block.setFillColor(Fill);
+    Block.setPosition(X * BlockSize, Y * BlockSize);
+    Window.draw(Block, T);
+  };
+
+  auto drawShape = [&](auto Shape, auto Pos, auto Outline, auto Fill) {
+    for (unsigned i = 0; i < Shape.size(); ++i) {
+      for (unsigned j = 0; j < Shape[i].size(); ++j) {
+        if (Shape[i][j]) {
+          drawBlock(Pos.x + j, Pos.y + i, Outline, Fill);
+        }
+      }
+    }
+  };
 
   for (unsigned i = 0; i < Rows; ++i) {
     for (unsigned j = 0; j < Cols; ++j) {
-      sf::RectangleShape Block(sf::Vector2f(BlockSize, BlockSize));
-      Block.setOutlineColor(sf::Color::Black);
-      Block.setOutlineThickness(2);
-      Block.setFillColor(Grid[i][j]);
-      Block.setPosition(
-          Margin + j * BlockSize,
-          Margin + i * BlockSize);
-      Window.draw(Block);
+      drawBlock(j, i, sf::Color::Black, Grid[i][j]);
     }
   }
 
   Tetromino::Shape &Shape = Current.getShape();
-
-  auto Destination = downDestination();
-  for (unsigned i = 0; i < Shape.size(); ++i) {
-    for (unsigned j = 0; j < Shape[i].size(); ++j) {
-      if (Shape[i][j]) {
-        sf::RectangleShape Block(sf::Vector2f(BlockSize, BlockSize));
-        Block.setOutlineColor(sf::Color::White);
-        Block.setOutlineThickness(2);
-        Block.setFillColor(sf::Color(0x99, 0x9d, 0xa0));
-        Block.setPosition(
-            Margin + (Destination.x + j) * BlockSize,
-            Margin + (Destination.y + i) * BlockSize);
-        Window.draw(Block);
-      }
-    }
-  }
-
-  for (unsigned i = 0; i < Shape.size(); ++i) {
-    for (unsigned j = 0; j < Shape[i].size(); ++j) {
-      if (Shape[i][j]) {
-        sf::RectangleShape Block(sf::Vector2f(BlockSize, BlockSize));
-        Block.setOutlineColor(sf::Color::Black);
-        Block.setOutlineThickness(2);
-        Block.setFillColor(Current.getColor());
-        Block.setPosition(
-            Margin + (CurrentPos.x + j) * BlockSize,
-            Margin + (CurrentPos.y + i) * BlockSize);
-        Window.draw(Block);
-      }
-    }
-  }
+  drawShape(Shape, downDestination(), sf::Color::White, sf::Color(0x99, 0x9d, 0xa0));
+  drawShape(Shape, CurrentPos, sf::Color::Black, Current.getColor());
 
   sf::RectangleShape NextBox(sf::Vector2f(BlockSize * 6, BlockSize * 4));
   NextBox.setOutlineColor(sf::Color::White);
@@ -781,24 +766,13 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
   NextBox.setFillColor(sf::Color::Black);
   unsigned int NextBoxX = Width / 2 + (Width / 2 - BlockSize * 5) / 4;
   unsigned int NextBoxY = Height / 8;
-  NextBox.setPosition(NextBoxX, NextBoxY);
-  Window.draw(NextBox);
 
-  Tetromino::Shape &NextShape = Next.getShape();
-  for (unsigned i = 0; i < NextShape.size(); ++i) {
-    for (unsigned j = 0; j < NextShape[i].size(); ++j) {
-      if (NextShape[i][j]) {
-        sf::RectangleShape Block(sf::Vector2f(BlockSize, BlockSize));
-        Block.setOutlineColor(sf::Color::Black);
-        Block.setOutlineThickness(2);
-        Block.setFillColor(Next.getColor());
-        Block.setPosition(
-            NextBoxX + (j + 1) * BlockSize,
-            NextBoxY + (i * 1) * BlockSize);
-        Window.draw(Block);
-      }
-    }
-  }
+  T = sf::Transform::Identity;
+  T.translate(NextBoxX, NextBoxY);
+
+  Window.draw(NextBox, T);
+
+  drawShape(Next.getShape(), sf::Vector2i(1, 0), sf::Color::Black, Next.getColor());
 
   unsigned int FontSize = 50;
   sf::Text ScoreLabel("Score", Font, FontSize);
@@ -808,19 +782,22 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
   sf::Text LevelLabel("Level", Font, FontSize);
   sf::Text LevelValue(formatInt(Level), Font, FontSize);
 
-  ScoreLabel.setPosition(2 * Width / 3, 7 * Height / 12);
-  ScoreValue.setPosition(2 * Width / 3, 7 * Height / 12 + 1 * FontSize);
-  LinesLabel.setPosition(2 * Width / 3, 7 * Height / 12 + 2 * FontSize);
-  LinesValue.setPosition(2 * Width / 3, 7 * Height / 12 + 3 * FontSize);
-  LevelLabel.setPosition(2 * Width / 3, 7 * Height / 12 + 4 * FontSize);
-  LevelValue.setPosition(2 * Width / 3, 7 * Height / 12 + 5 * FontSize);
+  T = sf::Transform::Identity;
+  T.translate(2 * Width / 3, 7 * Height / 12);
 
-  Window.draw(ScoreLabel);
-  Window.draw(ScoreValue);
-  Window.draw(LinesLabel);
-  Window.draw(LinesValue);
-  Window.draw(LevelLabel);
-  Window.draw(LevelValue);
+  ScoreLabel.setPosition(0, 0);
+  ScoreValue.setPosition(0, FontSize);
+  LinesLabel.setPosition(0, 2 * FontSize);
+  LinesValue.setPosition(0, 3 * FontSize);
+  LevelLabel.setPosition(0, 4 * FontSize);
+  LevelValue.setPosition(0, 5 * FontSize);
+
+  Window.draw(ScoreLabel, T);
+  Window.draw(ScoreValue, T);
+  Window.draw(LinesLabel, T);
+  Window.draw(LinesValue, T);
+  Window.draw(LevelLabel, T);
+  Window.draw(LevelValue, T);
 
   if (Paused) {
     sf::Text PausedText("PAUSED", Font, 200);
