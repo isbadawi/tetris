@@ -484,6 +484,10 @@ private:
   void moveDown();
   void reset();
 
+  void jumpDown();
+  sf::Vector2i downDestination();
+  void onPieceDown();
+
 public:
   static const uint32_t Rows = 20;
   static const uint32_t Cols = 10;
@@ -589,47 +593,66 @@ void TetrisGame::moveRight() {
   }
 }
 
+sf::Vector2i TetrisGame::downDestination() {
+  auto Y = CurrentPos.y;
+  while (currentPosIsValid()) {
+    CurrentPos.y++;
+  }
+  CurrentPos.y--;
+  auto Result = CurrentPos;
+  CurrentPos.y = Y;
+  return Result;
+}
+
+void TetrisGame::onPieceDown() {
+  Tetromino::Shape &Shape = Current.getShape();
+  for (unsigned i = 0; i < Shape.size(); ++i) {
+    for (unsigned j = 0; j < Shape[i].size(); ++j) {
+      if (Shape[i][j]) {
+        Grid[CurrentPos.y + i][CurrentPos.x + j] = Current.getColor();
+      }
+    }
+  }
+  CurrentPos.x = 3;
+  CurrentPos.y = 0;
+  Current = Next;
+  Next = Tetromino::CreateRandom();
+  Tick.restart();
+
+  int LinesCompleted = 0;
+
+  for (unsigned i = 0; i < Grid.size(); ++i) {
+    if (std::count(Grid[i].begin(), Grid[i].end(), sf::Color::Black) == 0) {
+      ++LinesCompleted;
+      for (int k = i, j = k - 1; j >= 0; --j, --k) {
+        std::copy(Grid[j].begin(), Grid[j].end(), Grid[k].begin());
+      }
+      std::fill(Grid[0].begin(), Grid[0].end(), sf::Color::Black);
+    }
+  }
+
+  Score += randomIntBetween(14, 19);
+  Lines += LinesCompleted;
+  Score += LinesCompleted * 100 * (LinesCompleted == 4 ? 2 : 1);
+  Level = 1 + Lines / 10;
+
+  if (!currentPosIsValid()) {
+    GameOver = true;
+    return;
+  }
+}
+
 void TetrisGame::moveDown() {
   CurrentPos.y++;
   if (!currentPosIsValid()) {
     CurrentPos.y--;
-
-    Tetromino::Shape &Shape = Current.getShape();
-    for (unsigned i = 0; i < Shape.size(); ++i) {
-      for (unsigned j = 0; j < Shape[i].size(); ++j) {
-        if (Shape[i][j]) {
-          Grid[CurrentPos.y + i][CurrentPos.x + j] = Current.getColor();
-        }
-      }
-    }
-    CurrentPos.x = 3;
-    CurrentPos.y = 0;
-    Current = Next;
-    Next = Tetromino::CreateRandom();
-    Tick.restart();
-
-    int LinesCompleted = 0;
-
-    for (unsigned i = 0; i < Grid.size(); ++i) {
-      if (std::count(Grid[i].begin(), Grid[i].end(), sf::Color::Black) == 0) {
-        ++LinesCompleted;
-        for (int k = i, j = k - 1; j >= 0; --j, --k) {
-          std::copy(Grid[j].begin(), Grid[j].end(), Grid[k].begin());
-        }
-        std::fill(Grid[0].begin(), Grid[0].end(), sf::Color::Black);
-      }
-    }
-
-    Score += randomIntBetween(14, 19);
-    Lines += LinesCompleted;
-    Score += LinesCompleted * 100 * (LinesCompleted == 4 ? 2 : 1);
-    Level = 1 + Lines / 10;
-
-    if (!currentPosIsValid()) {
-      GameOver = true;
-      return;
-    }
+    onPieceDown();
   }
+}
+
+void TetrisGame::jumpDown() {
+  CurrentPos = downDestination();
+  onPieceDown();
 }
 
 void TetrisGame::handleEvent(const sf::Event &Event) {
@@ -664,13 +687,9 @@ void TetrisGame::handleEvent(const sf::Event &Event) {
     case sf::Keyboard::Down:
       moveDown();
       break;
-    case sf::Keyboard::Space: {
-      uint64_t CurrentScore = Score;
-      do {
-        moveDown();
-      } while (Score == CurrentScore && !GameOver);
+    case sf::Keyboard::Space:
+      jumpDown();
       break;
-    }
     default:
       break;
     }
@@ -724,6 +743,23 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
   }
 
   Tetromino::Shape &Shape = Current.getShape();
+
+  auto Destination = downDestination();
+  for (unsigned i = 0; i < Shape.size(); ++i) {
+    for (unsigned j = 0; j < Shape[i].size(); ++j) {
+      if (Shape[i][j]) {
+        sf::RectangleShape Block(sf::Vector2f(BlockSize, BlockSize));
+        Block.setOutlineColor(sf::Color::White);
+        Block.setOutlineThickness(2);
+        Block.setFillColor(sf::Color(0x99, 0x9d, 0xa0));
+        Block.setPosition(
+            Margin + (Destination.x + j) * BlockSize,
+            Margin + (Destination.y + i) * BlockSize);
+        Window.draw(Block);
+      }
+    }
+  }
+
   for (unsigned i = 0; i < Shape.size(); ++i) {
     for (unsigned j = 0; j < Shape[i].size(); ++j) {
       if (Shape[i][j]) {
