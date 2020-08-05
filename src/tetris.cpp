@@ -889,7 +889,7 @@ int main() {
         Quit = true;
       }
       if (Event.type == sf::Event::KeyPressed) {
-        if (Event.key.code == sf::Keyboard::M) {
+        if (Event.key.code == sf::Keyboard::M && Mode != &HighScores) {
           if (Music.getStatus() != sf::SoundSource::Playing) {
             Music.play();
           } else {
