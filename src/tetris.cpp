@@ -286,6 +286,7 @@ public:
     return Tetromino(static_cast<Tetromino::Kind>(Kind));
   }
 
+  bool isValid() { return Type != NumKinds; }
   Shape &getShape();
   sf::Color getColor();
   void rotateLeft();
@@ -469,6 +470,7 @@ private:
   uint64_t Lines;
   Tetromino Current;
   Tetromino Next;
+  Tetromino Saved;
   sf::Vector2i CurrentPos;
   std::vector<std::vector<sf::Color>> Grid;
   PausableClock Tick;
@@ -494,6 +496,7 @@ public:
   TetrisGame() : Score(0), Level(1), Lines(0),
                  Current(Tetromino::CreateRandom()),
                  Next(Tetromino::CreateRandom()),
+                 Saved(Tetromino::Kind::NumKinds),
                  CurrentPos(3, 0),
                  Grid(Rows, std::vector<sf::Color>(Cols, sf::Color::Black)),
                  Paused(false), GameOver(false) {}
@@ -690,6 +693,18 @@ void TetrisGame::handleEvent(const sf::Event &Event) {
     case sf::Keyboard::Space:
       jumpDown();
       break;
+    case sf::Keyboard::S:
+      if (!Saved.isValid()) {
+        Saved = Current;
+        Current = Next;
+        Next = Tetromino::CreateRandom();
+      } else {
+        std::swap(Current, Saved);
+        if (!currentPosIsValid()) {
+          std::swap(Current, Saved);
+        }
+      }
+      break;
     default:
       break;
     }
@@ -773,6 +788,22 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
   Window.draw(NextBox, T);
 
   drawShape(Next.getShape(), sf::Vector2i(1, 0), sf::Color::Black, Next.getColor());
+
+  sf::RectangleShape SaveBox(sf::Vector2f(BlockSize * 6, BlockSize * 4));
+  SaveBox.setOutlineColor(sf::Color::White);
+  SaveBox.setOutlineThickness(3);
+  SaveBox.setFillColor(sf::Color::Black);
+  unsigned int SaveBoxX = Width / 2 + (Width / 2 - BlockSize * 5) / 4;
+  unsigned int SaveBoxY = 3 * Height / 8;
+
+  T = sf::Transform::Identity;
+  T.translate(SaveBoxX, SaveBoxY);
+
+  Window.draw(SaveBox, T);
+
+  if (Saved.isValid()) {
+    drawShape(Saved.getShape(), sf::Vector2i(1, 0), sf::Color::Black, Saved.getColor());
+  }
 
   unsigned int FontSize = 50;
   sf::Text ScoreLabel("Score", Font, FontSize);
