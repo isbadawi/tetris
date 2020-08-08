@@ -25,9 +25,10 @@ public:
   virtual void display(sf::RenderWindow &Window __unused, sf::Font &Font __unused) {}
 };
 
-static void centerTextHorizontally(sf::Text &Text, sf::RenderWindow &Window) {
+template<typename T>
+static void centerTextHorizontally(sf::Text &Text, T &HasSize) {
   sf::FloatRect Rect = Text.getLocalBounds();
-  float X = (Window.getSize().x - (Rect.left + Rect.width)) / 2.0f;
+  float X = (HasSize.getSize().x - (Rect.left + Rect.width)) / 2.0f;
   Text.setPosition(X, Text.getPosition().y);
 }
 
@@ -140,7 +141,7 @@ void HighScores::handleEvent(const sf::Event &Event) {
 
 void HighScores::display(sf::RenderWindow &Window, sf::Font &Font) {
   unsigned Height = Window.getSize().y;
-  sf::Text HighScoreLabel("HIGH SCORES", Font, Height / 6);
+  sf::Text HighScoreLabel("HIGH SCORES", Font, Height / 8);
   HighScoreLabel.setPosition(0, 0);
   centerTextHorizontally(HighScoreLabel, Window);
   Window.draw(HighScoreLabel);
@@ -201,7 +202,7 @@ void Menu::handleEvent(const sf::Event &Event) {
 
 void Menu::display(sf::RenderWindow &Window, sf::Font &Font) {
   unsigned Height = Window.getSize().y;
-  sf::Text Logo("TETRIS", Font, Height / 3);
+  sf::Text Logo("TETRIS", Font, Height / 4);
   Logo.setPosition(0, 0);
   centerTextHorizontally(Logo, Window);
   Window.draw(Logo);
@@ -732,7 +733,6 @@ static std::string formatInt(uint64_t Val) {
 }
 
 void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
-  unsigned int Width = Window.getSize().x;
   unsigned int Height = Window.getSize().y;
   unsigned int Margin = 10;
 
@@ -772,6 +772,7 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
     }
   }
 
+
   Tetromino::Shape &Shape = Current.getShape();
   drawShape(Shape, downDestination(), sf::Color::White, sf::Color(0x99, 0x9d, 0xa0));
   drawShape(Shape, CurrentPos, sf::Color::Black, Current.getColor());
@@ -780,13 +781,16 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
   NextBox.setOutlineColor(sf::Color::White);
   NextBox.setOutlineThickness(3);
   NextBox.setFillColor(sf::Color::Black);
-  unsigned int NextBoxX = Width / 2 + (Width / 2 - BlockSize * 5) / 4;
-  unsigned int NextBoxY = Height / 8;
 
-  T = sf::Transform::Identity;
-  T.translate(NextBoxX, NextBoxY);
+  T.translate(GridBox.getSize().x + Margin * 2, 0);
+
+  unsigned int FontSize = Height / 15;
+  sf::Text NextLabel("NEXT", Font, FontSize);
+  NextLabel.setPosition(0, NextBox.getSize().y + Margin * 2);
+  centerTextHorizontally(NextLabel, NextBox);
 
   Window.draw(NextBox, T);
+  Window.draw(NextLabel, T);
 
   drawShape(Next.getShape(), sf::Vector2i(1, 0), sf::Color::Black, Next.getColor());
 
@@ -794,19 +798,20 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
   SaveBox.setOutlineColor(sf::Color::White);
   SaveBox.setOutlineThickness(3);
   SaveBox.setFillColor(sf::Color::Black);
-  unsigned int SaveBoxX = Width / 2 + (Width / 2 - BlockSize * 5) / 4;
-  unsigned int SaveBoxY = 3 * Height / 8;
 
-  T = sf::Transform::Identity;
-  T.translate(SaveBoxX, SaveBoxY);
+  T.translate(NextBox.getSize().x + Margin * 2, 0);
+
+  sf::Text SavedLabel("SAVED", Font, FontSize);
+  SavedLabel.setPosition(0, SaveBox.getSize().y + Margin * 2);
+  centerTextHorizontally(SavedLabel, SaveBox);
 
   Window.draw(SaveBox, T);
+  Window.draw(SavedLabel, T);
 
   if (Saved.isValid()) {
     drawShape(Saved.getShape(), sf::Vector2i(1, 0), sf::Color::Black, Saved.getColor());
   }
 
-  unsigned int FontSize = Height / 15;
   sf::Text ScoreLabel("Score", Font, FontSize);
   sf::Text ScoreValue(formatInt(Score), Font, FontSize);
   sf::Text LinesLabel("Lines", Font, FontSize);
@@ -814,8 +819,7 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
   sf::Text LevelLabel("Level", Font, FontSize);
   sf::Text LevelValue(formatInt(Level), Font, FontSize);
 
-  T = sf::Transform::Identity;
-  T.translate(2 * Width / 3, 7 * Height / 12);
+  T.translate(-(NextBox.getSize().x + Margin * 2), Height / 2);
 
   ScoreLabel.setPosition(0, 0);
   ScoreValue.setPosition(0, FontSize);
@@ -832,8 +836,8 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
   Window.draw(LevelValue, T);
 
   if (Paused) {
-    sf::Text PausedText("PAUSED", Font, 200);
-    PausedText.setPosition(100, Height - 200);
+    sf::Text PausedText("PAUSED", Font, Height / 4);
+    PausedText.setPosition(Window.getSize().x / 8, 3 * Height / 4);
     PausedText.setFillColor(sf::Color::White);
     PausedText.setOutlineColor(sf::Color::Black);
     PausedText.setOutlineThickness(5);
@@ -844,9 +848,9 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
 
 int main() {
   std::srand(std::time(0));
-  sf::RenderWindow Window(sf::VideoMode(1024, 768), "Tetris");
+  sf::RenderWindow Window(sf::VideoMode(1920, 1440), "Tetris");
   sf::Font Font;
-  if (!Font.loadFromFile(ASSETS_DIR "/Arial.ttf")) {
+  if (!Font.loadFromFile(ASSETS_DIR "/joystix.ttf")) {
     return 1;
   }
   sf::Music Music;
