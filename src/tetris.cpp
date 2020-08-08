@@ -139,7 +139,8 @@ void HighScores::handleEvent(const sf::Event &Event) {
 }
 
 void HighScores::display(sf::RenderWindow &Window, sf::Font &Font) {
-  sf::Text HighScoreLabel("HIGH SCORES", Font, 100);
+  unsigned Height = Window.getSize().y;
+  sf::Text HighScoreLabel("HIGH SCORES", Font, Height / 6);
   HighScoreLabel.setPosition(0, 0);
   centerTextHorizontally(HighScoreLabel, Window);
   Window.draw(HighScoreLabel);
@@ -148,14 +149,14 @@ void HighScores::display(sf::RenderWindow &Window, sf::Font &Font) {
   for (auto &Entry : Scores) {
     std::stringstream Line;
     Line << Index++ << ". " << Entry.first << " " << Entry.second;
-    sf::Text Label(Line.str(), Font, 50);
+    sf::Text Label(Line.str(), Font, Height / 15);
 
     if (&Entry.first == PlayerNameInput) {
       Label.setFillColor(sf::Color::Yellow);
     }
 
-    float ItemHeight = Window.getSize().y / (MAX_HIGH_SCORES + 3);
-    float Y = ItemHeight * Index;
+    float ItemHeight = (3 * Height / 4) / MAX_HIGH_SCORES;
+    float Y = (Height / 6) + ItemHeight * (Index - 1);
     Label.setPosition(0, Y);
     centerTextHorizontally(Label, Window);
     Window.draw(Label);
@@ -199,20 +200,20 @@ void Menu::handleEvent(const sf::Event &Event) {
 }
 
 void Menu::display(sf::RenderWindow &Window, sf::Font &Font) {
-  sf::Text Logo("TETRIS", Font, 200);
+  unsigned Height = Window.getSize().y;
+  sf::Text Logo("TETRIS", Font, Height / 3);
   Logo.setPosition(0, 0);
   centerTextHorizontally(Logo, Window);
   Window.draw(Logo);
 
   for (unsigned I = 0, E = MenuItems.size(); I != E; ++I) {
-    unsigned int FontSize = 50;
-    sf::Text Label(MenuItems[I].first, Font, FontSize);
+    sf::Text Label(MenuItems[I].first, Font, Height / 15);
     if (I == Index) {
       Label.setFillColor(sf::Color::Yellow);
     }
 
-    float ItemHeight = Window.getSize().y / (MenuItems.size() * 2.0f);
-    float Y = ItemHeight * (I + MenuItems.size());
+    float ItemHeight = (Height / 2.0f) / MenuItems.size();
+    float Y = (Height / 2.0f) + ItemHeight * I;
     Label.setPosition(0, Y);
     centerTextHorizontally(Label, Window);
     Window.draw(Label);
@@ -805,7 +806,7 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
     drawShape(Saved.getShape(), sf::Vector2i(1, 0), sf::Color::Black, Saved.getColor());
   }
 
-  unsigned int FontSize = 50;
+  unsigned int FontSize = Height / 15;
   sf::Text ScoreLabel("Score", Font, FontSize);
   sf::Text ScoreValue(formatInt(Score), Font, FontSize);
   sf::Text LinesLabel("Lines", Font, FontSize);
@@ -887,6 +888,10 @@ int main() {
     while (Window.pollEvent(Event)) {
       if (Event.type == sf::Event::Closed) {
         Quit = true;
+      }
+      if (Event.type == sf::Event::Resized) {
+        Window.setView(sf::View(sf::FloatRect(
+            0, 0, Event.size.width, Event.size.height)));
       }
       if (Event.type == sf::Event::KeyPressed) {
         if (Event.key.code == sf::Keyboard::M && Mode != &HighScores) {
