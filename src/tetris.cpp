@@ -514,6 +514,7 @@ void TetrisGame::reset() {
   Lines = 0;
   Current = Tetromino::CreateRandom();
   Next = Tetromino::CreateRandom();
+  Saved = Tetromino(Tetromino::Kind::NumKinds);
   CurrentPos.x = 3;
   CurrentPos.y = 0;
   Grid = std::vector<std::vector<sf::Color>>(
