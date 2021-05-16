@@ -850,6 +850,7 @@ void TetrisGame::display(sf::RenderWindow &Window, sf::Font &Font) {
 int main() {
   std::srand(std::time(0));
   sf::RenderWindow Window(sf::VideoMode(1920, 1440), "Tetris");
+  Window.setFramerateLimit(60);
   sf::Font Font;
   if (!Font.loadFromFile(ASSETS_DIR "/joystix.ttf")) {
     return 1;
